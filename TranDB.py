@@ -1,57 +1,97 @@
 import unittest
+from unittest import mock
 from unittest.mock import MagicMock
+import csv
+import re
 import sqlite3
 
 
 class TranDB:
     def __init__(self):
-        self.log_file_name = None
+        self.log_file_name = "log_file_name.csv"
 
     def __repr__(self):
         return "TranDB"
 
     def __str__(self):
-        return "TranDB"
+        return self.__repr__()
 
     def create_db(self):
         stripped_log_file_name = self.log_file_name.rsplit(".", 1)[0]
         connection = sqlite3.connect(f"{stripped_log_file_name}.db")
         cursor = connection.cursor()
 
-        header_contents = "Time INT, Command TEXT"
-        table_name = f"{stripped_log_file_name}_table"
-        create_table_string = f"CREATE TABLE {table_name}({header_contents})"
-        cursor.execute(create_table_string)
+        log_file_headers, log_file_contents = self.get_log_file_data()
+        log_file_header_as_sql = self.get_log_file_header_as_sql_header(log_file_headers)
 
-        log_file_contents = self.get_log_file_contents()
+        table_name = f"{stripped_log_file_name}_table"
+        create_table_string = f"CREATE TABLE {table_name}({log_file_header_as_sql})"
+        cursor.execute(create_table_string)
 
         insert_data_string = f"INSERT INTO {table_name}(Time, Command) VALUES (?, ?);"
         cursor.executemany(insert_data_string, log_file_contents)
         connection.commit()
 
-    def get_log_file_contents(self):
-        return []
+    def get_log_file_data(self):
+        with open(self.log_file_name, 'rb') as file:
+            csv_file_as_list = csv.reader(file).strip().split("\n")
+            header = csv_file_as_list[0]
+            contents = csv_file_as_list[1:]
+            return header, contents
+
+    @staticmethod
+    def get_log_file_header_as_sql_header(header=""):
+        header = header.replace('"', '').replace(',', '')
+        return re.sub(r'([^\s]+)', r'\1 TEXT,',  header).strip(",")
 
 
 class MyTestCase(unittest.TestCase):
     def setUp(self):
         self.cut = TranDB()
-        self.log_file_name = "my_log_file"
-        self.log_file_contents = '"Time", "Command"\n"0", "RD"\n"1", "WR"'
-        self.cut.log_file_name = f"{self.log_file_name}.csv"
-        self.cut.get_log_file_contents = MagicMock(return_value=self.log_file_contents)
+
+    def set_log_file_variables(self, name="my_log_file", contents='"0", "RD"\n"1", "WR"',
+                               headers='"Time", "Command"'):
+        self.cut.log_file_name = f"{name}.csv"
+        self.cut.get_log_file_data = MagicMock(return_value=(headers, contents))
+        self.cut.get_log_file_header_as_sql_header = MagicMock(return_value=headers)
 
     def test_string_overriders_are_overridden(self):
         self.assertEqual("TranDB", repr(TranDB()))
-        self.assertEqual("TranDB", str(TranDB()))
+        self.assertEqual(repr(TranDB()), str(TranDB()))
 
-    @unittest.mock.patch("TranDB.sqlite3")
+    def test_can_convert_header_to_sql_header(self):
+        headers = '"Time", "Command"'
+        self.assertEqual("Time TEXT, Command TEXT", self.cut.get_log_file_header_as_sql_header(headers))
+
+    @mock.patch("TranDB.sqlite3")
     def test_can_create_db_file_from_csv(self, mock_sqlite3):
+        self.set_log_file_variables()
         mock_sqlite3.connect().return_value = None
         mock_sqlite3.connect().cursor().execute.return_value = None
         mock_sqlite3.connect().cursor().execute_many.return_value = None
         self.cut.create_db()
-        self.cut.get_log_file_contents.assert_called_once()
+        self.cut.get_log_file_data.assert_called_once()
+
+
+class FileIOTestCases(unittest.TestCase):
+    def setUp(self):
+        self.cut = TranDB()
+        self.file_contents = "TIME, CMD, ADDRESS\n0, RD, 0xbaadbeefdeadbeef\n10, WR, 0xbaadbeefdeadbeef\n"
+
+    @staticmethod
+    def get_builtin_open_patch(file_contents=None):
+        return mock.patch("builtins.open", mock.mock_open(read_data=file_contents))
+
+    def test_can_get_log_file_contents_without_headers(self):
+        csv.reader = MagicMock(return_value=self.file_contents)
+        exp_return_val = ['0, RD, 0xbaadbeefdeadbeef', '10, WR, 0xbaadbeefdeadbeef']
+        with self.get_builtin_open_patch(self.file_contents):
+            header, contents = self.cut.get_log_file_data()
+            self.assertEqual(exp_return_val, contents)
+
+    def test_invalid_file_throws_exception(self):
+        self.cut.log_file_name = "INVALID_FILE_NAME"
+        self.assertRaises(FileNotFoundError, self.cut.get_log_file_data)
 
 
 if __name__ == '__main__':
