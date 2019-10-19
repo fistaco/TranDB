@@ -8,7 +8,7 @@ import sqlite3
 
 class TranDB:
     def __init__(self):
-        self.log_file_name = "log_file_name.csv"
+        self.default_log_file_name = "default_log_file_name.csv"
 
     def __repr__(self):
         return "TranDB"
@@ -16,12 +16,14 @@ class TranDB:
     def __str__(self):
         return self.__repr__()
 
-    def add_to_db(self):
-        stripped_log_file_name = self.log_file_name.rsplit(".", 1)[0]
+    def add_to_db(self, log_file=None):
+        if log_file is None:
+            log_file = self.default_log_file_name
+        stripped_log_file_name = log_file.rsplit(".", 1)[0]
         connection = self._try_create_db(f"{stripped_log_file_name}.db")
         cursor = connection.cursor()
 
-        log_file_headers, log_file_contents = self._get_log_file_data()
+        log_file_headers, log_file_contents = self._get_log_file_data(log_file)
         log_file_header_as_sql = self._get_log_file_header_as_sql_header(log_file_headers)
 
         table_name = f"{stripped_log_file_name}_table"
@@ -38,8 +40,9 @@ class TranDB:
     def _try_create_db(db_name):
         return sqlite3.connect(db_name)
 
-    def _get_log_file_data(self):
-        with open(self.log_file_name, 'rb') as file:
+    @staticmethod
+    def _get_log_file_data(log_file_name="default_log_file_name.csv"):
+        with open(log_file_name, 'rb') as file:
             csv_file_as_list = csv.reader(file).strip().split("\n")
             header = csv_file_as_list[0]
             contents = csv_file_as_list[1:]
@@ -65,7 +68,7 @@ class TranDBTestCases(unittest.TestCase):
 
     def set_log_file_variables(self, name="my_log_file", contents='"0", "RD"\n"1", "WR"',
                                headers='"Time", "Command"'):
-        self.cut.log_file_name = f"{name}.csv"
+        self.cut.default_log_file_name = f"{name}.csv"
         self.cut._get_log_file_data = MagicMock(return_value=(headers, contents))
         self.cut._get_log_file_header_as_sql_header = MagicMock(return_value=headers)
 
@@ -122,7 +125,7 @@ class FileIOTestCases(unittest.TestCase):
             self.assertEqual(exp_return_val, contents)
 
     def test_invalid_file_throws_exception(self):
-        self.cut.log_file_name = "INVALID_FILE_NAME"
+        self.cut.default_log_file_name = "INVALID_FILE_NAME"
         self.assertRaises(FileNotFoundError, self.cut._get_log_file_data)
 
 
