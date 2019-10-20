@@ -149,6 +149,33 @@ class TranDBTestCases(unittest.TestCase):
         exp_return_val = "?, ?"
         self.assertEqual(exp_return_val, self.cut._get_insert_data_values_question_mark_string(num_headers))
 
+    def test_flow_general_case_and_incomplete_case_and_unsorted_case(self):
+        e0 = (0, 'WR', '0xc0ffee')
+        e1 = (10, 'RD', '0xc0ffee')
+        e2 = (30, 'WR', '0x00beef')
+        e3 = (50, 'RD', '0x00beef')
+
+        # General case
+        fst_events = [e0, e2]
+        snd_events = [e1, e3]
+
+        exp_flow = [e0, e1, e2, e3]
+        self.assertEqual(exp_flow, self.cut.flow(fst_events, snd_events))
+
+        # Incomplete sequences
+        fst_events = [e0, e2]
+        snd_events = [e1]
+
+        exp_flow = [e0, e1, e2]
+        self.assertEqual(exp_flow, self.cut.flow(fst_events, snd_events))
+
+        # Unsorted case
+        fst_events = [e2, e0]
+        snd_events = [e3, e1]
+
+        exp_flow = [e0, e1, e2, e3]
+        self.assertEqual(exp_flow, self.cut.flow(fst_events, snd_events))
+
     @mock.patch("TranDB.sqlite3")
     def test_can_create_db_file_from_csv(self, mock_sqlite3):
         self.set_log_file_variables(contents=[["0", "RD"], ["1", "WR"]])
