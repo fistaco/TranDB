@@ -54,6 +54,29 @@ class TranDB:
         self.cursor.executemany(insert_data_string, log_file_contents)
         self.connection.commit()
 
+    def flow(self, events1, events2, log_file=None):
+        # Ensure that both sets are sorted by time. Assume "Time" is column 0.
+        events_list = [events1, events2]
+        for (index, evnts) in enumerate(events_list):
+            is_sorted = \
+                all(evnts[i][0] <= evnts[i+1][0] for i in range(len(evnts)-1))
+            if not is_sorted:
+                events_list[index] = sorted(evnts, key=lambda event: event[0])
+
+        # Build the flow object up iteratively by finding the first event from
+        # the second set that follows each event from the first set.
+        flow = []
+        for event1 in events_list[0]:
+            flow.append(event1)
+
+            # Add the next subsequent event to the flow if there is one
+            subseq_evts = [e for e in events_list[1] if e[0] > event1[0]]
+            if subseq_evts:
+                next_event = subseq_evts[0]
+                flow.append(next_event)
+
+        return flow
+
     def _get_db_name(self, log_file):
         return f"{self._get_stripped_log_file_name(log_file)}.db"
 
