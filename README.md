@@ -10,14 +10,14 @@ another in time given certain criteria.
 For example, say you are given this database for CPU core transactions. Say want to see all
 `WRs` to any address *A*, and then the next subsequent `RD` to the same address *A*:
 
-| Time | Command | Address  |
-| ---- | ------- | -------- |
-| 0    | WR      | 0xc0ffee |
-| 10   | RD      | 0xc0ffee |
-| 20   | NOP     | 0x000000 |
-| 30   | WR      | 0x00beef |
-| 40   | NOP     | 0x000000 |
-| 50   | RD      | 0x00beef |
+| Time | Command | Address    |
+| ---- | ------- | ---------- |
+| 0    | WR      | `0xc0ffee` |
+| 10   | RD      | `0xc0ffee` |
+| 20   | NOP     | `0x000000` |
+| 30   | WR      | `0x00beef` |
+| 40   | NOP     | `0x000000` |
+| 50   | RD      | `0x00beef` |
 
 Given a TranDB object `my_db` with a loaded database, the query above is simply:
 ```Python
@@ -27,12 +27,12 @@ flow = my_db.flow(event1, event2)
 ```
 The `flow` variable now is a 2D list in Python containing the following:
 
-| Time | Command | Address  |
-| ---- | ------- | -------- |
-| 0    | WR      | 0xc0ffee |
-| 10   | RD      | 0xc0ffee |
-| 30   | WR      | 0x00beef |
-| 50   | RD      | 0x00beef |
+| Time | Command | Address    |
+| ---- | ------- | ---------- |
+| 0    | WR      | `0xc0ffee` |
+| 10   | RD      | `0xc0ffee` |
+| 30   | WR      | `0x00beef` |
+| 50   | RD      | `0x00beef` |
 
 ### Prerequisites
 
@@ -45,7 +45,7 @@ Currently calling `TranDB.py` as main will run all unit tests.
 ## Contributing
 
 Please contribute to this project with the following criteria for your pull requests:
-* PEP8 Compilant
+* PEP8 Compliant
 * All developed code is unit-tested, ideally done with test-driven development
 
 Please submit issues if you have an enhancement request or if you encounter bugs.
